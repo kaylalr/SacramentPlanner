@@ -1,0 +1,103 @@
+﻿@{
+	//Layout = null;
+	var db = WebMatrix.Data.Database.Open("SacramentMeetingPlanner");
+	var selectCommand = "Select p.Date, b.Name, s.OpeningSongNum, s.OpeningSongTitle, s.SacramentSongNum, s.SacramentSongTitle, s.InterSongNum, s.InterSongTitle, s.ClosingSongNum, s.ClosingSongTitle, pr.OpeningPrayer, pr.ClosingPrayer, COUNT(sp.SpeakersId) as NumSpeakers FROM Planner p JOIN Bishopric b ON p.BishopricId = b.BishopricId JOIN Songs s ON p.SongsId = s.SongsId JOIN Prayers pr ON pr.PrayersId = p.PrayersId JOIN Speakers sp ON p.PlannerId = sp.PlannerId GROUP BY p.Date, b.Name, s.OpeningSongNum, s.OpeningSongTitle, s.SacramentSongNum, s.SacramentSongTitle, s.InterSongNum, s.InterSongTitle, s.ClosingSongNum, s.ClosingSongTitle, pr.OpeningPrayer, pr.ClosingPrayer;";
+	var searchTerm = "";
+
+	if(!Request.QueryString["searchSpeakers"].IsEmpty())
+	{
+		selectCommand = "Select * FROM Speakers WHERE Name = @0";
+		searchTerm = Request.QueryString["searchSpeakers"];
+	}
+
+	if (!Request.QueryString["searchSongs"].IsEmpty())
+	{
+		selectCommand = "SELECT * FROM Songs WHERE OpeningSongTitle = @0 OR SacramentSongTitle = @0 OR InterSongTitle = @0 OR ClosingSongTitle = @0";
+		searchTerm = "%" + Request.QueryString["searchSongs"] + "%";
+	}
+
+	var selectedData = db.Query(selectCommand, searchTerm);
+	var grid = new WebGrid(source: selectedData, defaultSort: "Date", rowsPerPage: 5);
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Sacrament Meeting Planner</title>
+	<link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+	<style type="text/css">
+		body {
+			font-family: 'Roboto', sans-serif;
+		}
+
+		.grid {
+			margin: 4px;
+			border-collapse: collapse;
+			width: 600px;
+		}
+
+			.grid th, .grid td {
+				border: 1px solid #C0C0C0;
+				padding: 5px;
+			}
+
+		.head {
+			background-color: #E8E8E8;
+			font-weight: bold;
+			color: #FFF;
+		}
+
+		.alt {
+			background-color: #E8E8E8;
+			color: #000;
+		}
+	</style>
+</head>
+<body>
+	<h1>Planned Meetings</h1>
+	<form method="get">
+		<div>
+			<label for="searchSpeakers">Search Speakers:</label>
+			<input id="searchSpeakers" type="text" name="searchSpeakers" value="@Request.QueryString["searchSpeakers"]" />
+			<input type="submit" value="Search Speakers" />
+		</div>
+	</form>
+	<form method="get">
+		<div>
+			<label for="searchSongs">Song title contains the following:</label>
+			<input id="searchSongs" type="text" name="searchSongs" value="@Request.QueryString["searchSongs"]" />
+			<input type="submit" value="Search" />
+		</div>
+	</form>
+	<form>
+		<input type="submit" name="buttonSubmit" value="Clear Search" />
+	</form>
+
+	<div>
+		@grid.GetHtml(
+			tableStyle: "grid",
+			headerStyle: "head",
+			alternatingRowStyle: "alt",
+			columns: grid.Columns (
+				@*grid.Column(format: @<a href="~/EditPlanner?id=@item.ID">Edit</a>),*@
+				grid.Column("Date"),
+				grid.Column("Name"),
+				grid.Column("OpeningSongNum"),
+				grid.Column("OpeningSongTitle"),
+				grid.Column("SacramentSongNum"),
+				grid.Column("SacramentSongTitle"),
+				grid.Column("InterSongNum"),
+				grid.Column("InterSongTitle"),
+				grid.Column("ClosingSongNum"),
+				grid.Column("ClosingSongTitle"),
+				grid.Column("OpeningPrayer"),
+				grid.Column("ClosingPrayer"),
+				grid.Column("NumSpeakers")
+			)
+		)
+	</div>
+	<p><a href="~/AddPlanner">Add a meeting plan</a></p>
+</body>
+</html>
